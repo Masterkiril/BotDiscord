@@ -10,7 +10,7 @@ const {
     ActionRowBuilder,
 } = require("discord.js");
 
-const TOKEN = "MTQ0ODM0MDQ2NDA3MDgyNDEzMQ.G_xNhN.qKVSKrIQM21VgkSaTdk5mNZMGVjhzzt_BPmF0E";
+const TOKEN = "process.env.TOKEN";
 const CLIENT_ID = "1448340464070824131";
 const GUILD_ID = "1417744686109560935";
 
@@ -92,3 +92,4 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.login(TOKEN);
+
