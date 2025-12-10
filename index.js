@@ -11,8 +11,8 @@ const {
 } = require("discord.js");
 
 const TOKEN = "process.env.TOKEN";
-const CLIENT_ID = "1448340464070824131";
-const GUILD_ID = "1417744686109560935";
+const CLIENT_ID = "process.env.CLIENT_ID";
+const GUILD_ID = "process.env.GUILD_ID";
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
@@ -92,4 +92,5 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.login(TOKEN);
+
 
