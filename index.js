@@ -11,13 +11,14 @@ const {
     ActionRowBuilder 
 } = require("discord.js");
 const express = require("express");
+const fs = require("fs");
 
 // === Переменные окружения ===
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
-// ===== EXPRESS ДЛЯ RENDER (минимальный) =====
+// ===== EXPRESS ДЛЯ RENDER =====
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get("/", (req, res) => res.send("Bot is running!"));
@@ -25,6 +26,23 @@ app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
 
 // ===== Discord клиент =====
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+// ===== JSON функции для таймера =====
+const DATA_FILE = './data.json';
+
+function saveTimestamp(ts) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ contractTimestamp: ts }));
+}
+
+function loadTimestamp() {
+    if (!fs.existsSync(DATA_FILE)) return null;
+    const data = JSON.parse(fs.readFileSync(DATA_FILE));
+    return data.contractTimestamp || null;
+}
+
+// ===== Инициализация таймера =====
+let contractTimestamp = loadTimestamp();
+let contractTaken = contractTimestamp && (Date.now() - contractTimestamp < 24 * 60 * 60 * 1000);
 
 // ===== Регистрация slash-команды =====
 const commands = [
@@ -47,9 +65,6 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 })();
 
 // ===== Логика контракта =====
-let contractTaken = false;
-let contractTimestamp = null;
-
 client.on("interactionCreate", async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === "contract") {
         const embed = new EmbedBuilder()
@@ -76,7 +91,9 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (interaction.isButton()) {
-        // Взять контракт
+        const now = Date.now();
+
+        // ----- Взять контракт -----
         if (interaction.customId === "take_contract") {
             if (contractTaken) {
                 return interaction.reply({
@@ -86,7 +103,8 @@ client.on("interactionCreate", async (interaction) => {
             }
 
             contractTaken = true;
-            contractTimestamp = Date.now();
+            contractTimestamp = now;
+            saveTimestamp(contractTimestamp);
 
             await interaction.reply(
                 `✅ **${interaction.user.username}** взял контракт **"Дары моря I"**!`
@@ -96,12 +114,14 @@ client.on("interactionCreate", async (interaction) => {
             setTimeout(async () => {
                 contractTaken = false;
                 contractTimestamp = null;
+                saveTimestamp(null);
+
                 const channel = interaction.channel;
                 if (channel) channel.send("🔔 **Контракт снова доступен!**");
-            }, 24 * 60 * 60 * 1000);
+            }, 24 * 60 * 60 * 1000); // 24 часа
         }
 
-        // Проверить таймер
+        // ----- Проверить таймер -----
         if (interaction.customId === "check_timer") {
             if (!contractTaken) {
                 return interaction.reply({
@@ -110,7 +130,6 @@ client.on("interactionCreate", async (interaction) => {
                 });
             }
 
-            const now = Date.now();
             const endTime = contractTimestamp + 24 * 60 * 60 * 1000;
             const remaining = endTime - now;
 
@@ -118,8 +137,8 @@ client.on("interactionCreate", async (interaction) => {
             const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
 
-            await interaction.reply({
-                content: `⏱ Осталось до следующего доступного контракта: ${hours}ч ${minutes}м ${seconds}с`,
+            return interaction.reply({
+                content: `⏱ Контракт занят. Осталось до следующего доступного: ${hours}ч ${minutes}м ${seconds}с`,
                 ephemeral: true,
             });
         }
