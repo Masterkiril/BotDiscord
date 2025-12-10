@@ -34,36 +34,39 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
     console.log("Команда /contract зарегистрирована");
 })();
 
-
 // ===== ЛОГИКА БОТА =====
-let contractTaken = false; // чтобы нельзя было взять дважды
+let contractTaken = false;
+let contractTimestamp = null; // время взятия контракта
 
 client.on("interactionCreate", async (interaction) => {
     // ----- команда /contract -----
-    if (interaction.isChatInputCommand()) {
-        if (interaction.commandName === "contract") {
-            const embed = new EmbedBuilder()
-                .setTitle("📄 Контракт: Дары моря I")
-                .setDescription(
-                    "Чтобы взять контракт, нажмите кнопку ниже.\n\n" +
-                    "**Награда:** 87 000$, +100 репутации, +50 опыта\n" +
-                    "**Откат:** 24 часа"
-                )
-                .setColor(0x2f3136);
+    if (interaction.isChatInputCommand() && interaction.commandName === "contract") {
+        const embed = new EmbedBuilder()
+            .setTitle("📄 Контракт: Дары моря I")
+            .setDescription(
+                "Чтобы взять контракт, нажмите кнопку ниже.\n\n" +
+                "**Награда:** 87 000$, +100 репутации, +50 опыта\n" +
+                "**Откат:** 24 часа"
+            )
+            .setColor(0x2f3136);
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId("take_contract")
-                    .setLabel("Взять контракт")
-                    .setStyle(ButtonStyle.Primary)
-            );
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("take_contract")
+                .setLabel("Взять контракт")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("check_timer")
+                .setLabel("Таймер")
+                .setStyle(ButtonStyle.Secondary)
+        );
 
-            await interaction.reply({ embeds: [embed], components: [row] });
-        }
+        await interaction.reply({ embeds: [embed], components: [row] });
     }
 
-    // ----- кнопка "Взять контракт" -----
+    // ----- кнопки -----
     if (interaction.isButton()) {
+        // ----- Взять контракт -----
         if (interaction.customId === "take_contract") {
             if (contractTaken) {
                 return interaction.reply({
@@ -73,25 +76,47 @@ client.on("interactionCreate", async (interaction) => {
             }
 
             contractTaken = true;
+            contractTimestamp = Date.now();
 
             await interaction.reply(
                 `✅ **${interaction.user.username}** взял контракт **"Дары моря I"**!`
             );
 
-            // === ТАЙМЕР 24 ЧАСА ===
+            // Таймер на 24 часа
             setTimeout(async () => {
                 contractTaken = false;
+                contractTimestamp = null;
 
                 const channel = interaction.channel;
                 if (channel) {
                     channel.send("🔔 **Контракт снова доступен!**");
                 }
-            }, 24 * 60 * 60 * 1000); // 24 часа в мс
+            }, 24 * 60 * 60 * 1000); // 24 часа
+        }
+
+        // ----- Проверить таймер -----
+        if (interaction.customId === "check_timer") {
+            if (!contractTaken) {
+                return interaction.reply({
+                    content: "✅ Контракт доступен прямо сейчас!",
+                    ephemeral: true,
+                });
+            }
+
+            const now = Date.now();
+            const endTime = contractTimestamp + 24 * 60 * 60 * 1000;
+            const remaining = endTime - now;
+
+            const hours = Math.floor(remaining / (1000 * 60 * 60));
+            const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+
+            await interaction.reply({
+                content: `⏱ Осталось до следующего доступного контракта: ${hours}ч ${minutes}м ${seconds}с`,
+                ephemeral: true,
+            });
         }
     }
 });
 
 client.login(TOKEN);
-
-
-
