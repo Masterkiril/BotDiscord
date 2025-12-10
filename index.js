@@ -1,16 +1,15 @@
 // index.js
-const {
-    Client,
-    GatewayIntentBits,
-    SlashCommandBuilder,
-    Routes,
-    REST,
-    EmbedBuilder,
-    ButtonBuilder,
-    ButtonStyle,
-    ActionRowBuilder,
+const { 
+    Client, 
+    GatewayIntentBits, 
+    SlashCommandBuilder, 
+    Routes, 
+    REST, 
+    EmbedBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    ActionRowBuilder 
 } = require("discord.js");
-
 const express = require("express");
 
 // === Переменные окружения ===
@@ -18,16 +17,20 @@ const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
-// === Создаем Discord-клиент ===
-const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
-});
+// ===== EXPRESS ДЛЯ RENDER (минимальный) =====
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get("/", (req, res) => res.send("Bot is running!"));
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
 
-// ===== РЕГИСТРАЦИЯ СЛЭШ-КОМАНДЫ =====
+// ===== Discord клиент =====
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+// ===== Регистрация slash-команды =====
 const commands = [
     new SlashCommandBuilder()
         .setName("contract")
-        .setDescription("Отправить сообщение с контрактом Дары моря I"),
+        .setDescription("Отправить сообщение с контрактом Дары моря I")
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -43,9 +46,9 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
     }
 })();
 
-// ===== ЛОГИКА БОТА =====
+// ===== Логика контракта =====
 let contractTaken = false;
-let contractTimestamp = null; // время взятия контракта
+let contractTimestamp = null;
 
 client.on("interactionCreate", async (interaction) => {
     if (interaction.isChatInputCommand() && interaction.commandName === "contract") {
@@ -73,7 +76,7 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (interaction.isButton()) {
-        // ----- Взять контракт -----
+        // Взять контракт
         if (interaction.customId === "take_contract") {
             if (contractTaken) {
                 return interaction.reply({
@@ -89,19 +92,16 @@ client.on("interactionCreate", async (interaction) => {
                 `✅ **${interaction.user.username}** взял контракт **"Дары моря I"**!`
             );
 
-            // Таймер на 24 часа
+            // Таймер 24 часа
             setTimeout(async () => {
                 contractTaken = false;
                 contractTimestamp = null;
-
                 const channel = interaction.channel;
-                if (channel) {
-                    channel.send("🔔 **Контракт снова доступен!**");
-                }
-            }, 24 * 60 * 60 * 1000); // 24 часа
+                if (channel) channel.send("🔔 **Контракт снова доступен!**");
+            }, 24 * 60 * 60 * 1000);
         }
 
-        // ----- Проверить таймер -----
+        // Проверить таймер
         if (interaction.customId === "check_timer") {
             if (!contractTaken) {
                 return interaction.reply({
@@ -126,12 +126,5 @@ client.on("interactionCreate", async (interaction) => {
     }
 });
 
-// ===== LOGIN =====
+// ===== Логин бота =====
 client.login(TOKEN);
-
-// ===== EXPRESS ДЛЯ RENDER =====
-const app = express();
-app.get("/", (req, res) => res.send("Bot is running!"));
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
