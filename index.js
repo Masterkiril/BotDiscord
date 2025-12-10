@@ -1,3 +1,4 @@
+// index.js
 const {
     Client,
     GatewayIntentBits,
@@ -10,15 +11,19 @@ const {
     ActionRowBuilder,
 } = require("discord.js");
 
+const express = require("express");
+
+// === Переменные окружения ===
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
+// === Создаем Discord-клиент ===
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
 });
 
-// ===== РЕГИСТРАЦИЯ КОМАНДЫ =====
+// ===== РЕГИСТРАЦИЯ СЛЭШ-КОМАНДЫ =====
 const commands = [
     new SlashCommandBuilder()
         .setName("contract")
@@ -28,10 +33,14 @@ const commands = [
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 (async () => {
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
-        body: commands,
-    });
-    console.log("Команда /contract зарегистрирована");
+    try {
+        await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
+            body: commands,
+        });
+        console.log("Команда /contract зарегистрирована");
+    } catch (err) {
+        console.error("Ошибка регистрации команды:", err);
+    }
 })();
 
 // ===== ЛОГИКА БОТА =====
@@ -39,7 +48,6 @@ let contractTaken = false;
 let contractTimestamp = null; // время взятия контракта
 
 client.on("interactionCreate", async (interaction) => {
-    // ----- команда /contract -----
     if (interaction.isChatInputCommand() && interaction.commandName === "contract") {
         const embed = new EmbedBuilder()
             .setTitle("📄 Контракт: Дары моря I")
@@ -64,7 +72,6 @@ client.on("interactionCreate", async (interaction) => {
         await interaction.reply({ embeds: [embed], components: [row] });
     }
 
-    // ----- кнопки -----
     if (interaction.isButton()) {
         // ----- Взять контракт -----
         if (interaction.customId === "take_contract") {
@@ -119,4 +126,12 @@ client.on("interactionCreate", async (interaction) => {
     }
 });
 
+// ===== LOGIN =====
 client.login(TOKEN);
+
+// ===== EXPRESS ДЛЯ RENDER =====
+const app = express();
+app.get("/", (req, res) => res.send("Bot is running!"));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
